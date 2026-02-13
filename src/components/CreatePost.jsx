@@ -6,6 +6,44 @@ export default function CreatePost({ session, onPostCreated }) {
   const [imageFile, setImageFile] = useState(null)
   const [uploading, setUploading] = useState(false)
 
+  const compressImage = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target.result
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          
+          // Resize if too large (max 1200px width)
+          const maxWidth = 1200
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          // Convert to blob with compression (0.8 quality)
+          canvas.toBlob(
+            (blob) => {
+              resolve(blob)
+            },
+            'image/jpeg',
+            0.8
+          )
+        }
+      }
+    })
+  }
+
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setImageFile(e.target.files[0])
@@ -15,29 +53,39 @@ export default function CreatePost({ session, onPostCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!imageFile) {
-      alert('Please select an image')
+    // Allow posting without image if caption exists
+    if (!imageFile && !caption.trim()) {
+      alert('Please add an image or write something')
       return
     }
 
     setUploading(true)
 
     try {
-      // Upload image to Supabase storage
-      const fileExt = imageFile.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
-      const filePath = `${fileName}`
+      let publicUrl = null
 
-      const { error: uploadError } = await supabase.storage
-        .from('post-images')
-        .upload(filePath, imageFile)
+      // Upload image only if one was selected
+      if (imageFile) {
+        // Compress the image
+        const compressedImage = await compressImage(imageFile)
+        
+        const fileExt = imageFile.name.split('.').pop()
+        const fileName = `${Math.random()}.${fileExt}`
+        const filePath = `${fileName}`
 
-      if (uploadError) throw uploadError
+        const { error: uploadError } = await supabase.storage
+          .from('post-images')
+          .upload(filePath, compressedImage)
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('post-images')
-        .getPublicUrl(filePath)
+        if (uploadError) throw uploadError
+
+        // Get public URL
+        const { data: { publicUrl: url } } = supabase.storage
+          .from('post-images')
+          .getPublicUrl(filePath)
+        
+        publicUrl = url
+      }
 
       // Create post in database
       const { error: insertError } = await supabase
@@ -46,7 +94,7 @@ export default function CreatePost({ session, onPostCreated }) {
           {
             user_id: session.user.id,
             image_url: publicUrl,
-            caption: caption || null,
+            caption: caption.trim() || null,
           },
         ])
 
@@ -72,20 +120,19 @@ export default function CreatePost({ session, onPostCreated }) {
     <div style={styles.container}>
       <h2 style={styles.title}>Create New Post</h2>
       <form onSubmit={handleSubmit} style={styles.form}>
+        <textarea
+          placeholder="What's on your mind?"
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          style={styles.textarea}
+          rows={3}
+        />
+        
         <input
           type="file"
           accept="image/*"
           onChange={handleImageChange}
           style={styles.fileInput}
-          required
-        />
-        
-        <textarea
-          placeholder="Write a caption..."
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          style={styles.textarea}
-          rows={3}
         />
         
         <button 
@@ -117,11 +164,6 @@ const styles = {
     flexDirection: 'column',
     gap: '1rem',
   },
-  fileInput: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-  },
   textarea: {
     padding: '0.75rem',
     border: '1px solid #d1d5db',
@@ -129,6 +171,11 @@ const styles = {
     fontSize: '1rem',
     fontFamily: 'inherit',
     resize: 'vertical',
+  },
+  fileInput: {
+    padding: '0.5rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
   },
   button: {
     backgroundColor: '#3b82f6',

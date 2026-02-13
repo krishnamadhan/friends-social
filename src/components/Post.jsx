@@ -12,7 +12,6 @@ export default function Post({ post, session, onUpdate }) {
 
   const handleLike = async () => {
     if (isLiked) {
-      // Unlike
       const { error } = await supabase
         .from('likes')
         .delete()
@@ -21,7 +20,6 @@ export default function Post({ post, session, onUpdate }) {
       
       if (!error) onUpdate()
     } else {
-      // Like
       const { error } = await supabase
         .from('likes')
         .insert([{ post_id: post.id, user_id: session.user.id }])
@@ -61,9 +59,15 @@ export default function Post({ post, session, onUpdate }) {
         </span>
       </div>
 
-      <img src={post.image_url} alt="Post" style={styles.image} />
+      {post.image_url && (
+        <img src={post.image_url} alt="Post" style={styles.image} />
+      )}
 
-      {post.caption && <p style={styles.caption}>{post.caption}</p>}
+      {post.caption && (
+        <p style={post.image_url ? styles.caption : styles.textOnlyPost}>
+          {post.caption}
+        </p>
+      )}
 
       <div style={styles.actions}>
         <button onClick={handleLike} style={styles.actionButton}>
@@ -138,6 +142,12 @@ const styles = {
   caption: {
     padding: '1rem',
     margin: 0,
+  },
+  textOnlyPost: {
+    padding: '2rem 1rem',
+    margin: 0,
+    fontSize: '1.125rem',
+    lineHeight: '1.75',
   },
   actions: {
     padding: '0.5rem 1rem',

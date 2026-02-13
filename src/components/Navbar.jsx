@@ -8,7 +8,7 @@ export default function Navbar({ session }) {
   return (
     <nav style={styles.nav}>
       <div style={styles.container}>
-        <h1 style={styles.logo}>Friends Social</h1>
+        <h1 style={styles.logo}>Banter Squad</h1>
         <div style={styles.userSection}>
           <span style={styles.email}>{session.user.email}</span>
           <button onClick={handleLogout} style={styles.logoutButton}>
