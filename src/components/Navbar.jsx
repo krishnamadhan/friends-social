@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import Settings from './Settings'    
 
-export default function Navbar({ session, profile }) {
+export default function Navbar({ session, profile, onProfileUpdate }) {
+  const [showSettings, setShowSettings] = useState(false)
   const handleLogout = async () => {
     await supabase.auth.signOut()
   }
@@ -10,11 +13,16 @@ export default function Navbar({ session, profile }) {
       <div style={styles.container}>
         <h1 style={styles.logo}>Banter Squad</h1>
         <div style={styles.userSection}>
-          <span style={styles.nickname}>@{profile.nickname}</span>
-          <button onClick={handleLogout} style={styles.logoutButton}>
-            Logout
-          </button>
-        </div>
+            <button 
+              onClick={() => setShowSettings(true)}
+              style={styles.nicknameButton}
+            >
+              @{profile.nickname}
+            </button>
+            <button onClick={handleLogout} style={styles.logoutButton}>
+              Logout
+            </button>
+          </div> 
       </div>
     </nav>
   )
@@ -44,10 +52,15 @@ const styles = {
     alignItems: 'center',
     gap: '1rem',
   },
-  nickname: {
+  nicknameButton: {
     fontSize: '0.875rem',
     color: '#374151',
     fontWeight: '500',
+    background: 'none',
+    border: '1px solid #d1d5db',
+    padding: '0.5rem 1rem',
+    borderRadius: '6px',
+    cursor: 'pointer',
   },
   logoutButton: {
     backgroundColor: '#ef4444',

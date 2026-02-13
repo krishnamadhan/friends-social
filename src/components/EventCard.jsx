@@ -72,7 +72,8 @@ export default function EventCard({ event, session, onUpdate }) {
       hour: '2-digit',
       minute: '2-digit'
     }
-    return date.toLocaleDateString('en-US', options)
+    // toLocaleString includes both date and time according to options
+    return date.toLocaleString('en-US', options)
   }
 
   const isPastEvent = new Date(event.event_date) < new Date()
