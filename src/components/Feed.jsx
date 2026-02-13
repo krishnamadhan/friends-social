@@ -13,7 +13,15 @@ export default function Feed({ session }) {
         .from('posts')
         .select(`
           *,
-          comments (id, text, user_id, created_at),
+          profiles:user_id (nickname),
+          comments (
+            id, 
+            text, 
+            user_id, 
+            created_at,
+            parent_comment_id,
+            profiles:user_id (nickname)
+          ),
           likes (id, user_id)
         `)
         .order('created_at', { ascending: false })

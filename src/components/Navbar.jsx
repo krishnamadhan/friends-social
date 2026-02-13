@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient'
 
-export default function Navbar({ session }) {
+export default function Navbar({ session, profile }) {
   const handleLogout = async () => {
     await supabase.auth.signOut()
   }
@@ -10,7 +10,7 @@ export default function Navbar({ session }) {
       <div style={styles.container}>
         <h1 style={styles.logo}>Banter Squad</h1>
         <div style={styles.userSection}>
-          <span style={styles.email}>{session.user.email}</span>
+          <span style={styles.nickname}>@{profile.nickname}</span>
           <button onClick={handleLogout} style={styles.logoutButton}>
             Logout
           </button>
@@ -44,9 +44,10 @@ const styles = {
     alignItems: 'center',
     gap: '1rem',
   },
-  email: {
+  nickname: {
     fontSize: '0.875rem',
-    color: '#6b7280',
+    color: '#374151',
+    fontWeight: '500',
   },
   logoutButton: {
     backgroundColor: '#ef4444',
