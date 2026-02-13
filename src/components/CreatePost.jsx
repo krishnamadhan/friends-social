@@ -5,6 +5,7 @@ export default function CreatePost({ session, onPostCreated }) {
   const [caption, setCaption] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [preview, setPreview] = useState(null)
 
   const compressImage = async (file) => {
     return new Promise((resolve) => {
@@ -46,8 +47,21 @@ export default function CreatePost({ session, onPostCreated }) {
 
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0])
+      const file = e.target.files[0]
+      setImageFile(file)
+      
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreview(reader.result)
+      }
+      reader.readAsDataURL(file)
     }
+  }
+
+  const removeImage = () => {
+    setImageFile(null)
+    setPreview(null)
   }
 
   const handleSubmit = async (e) => {
@@ -70,12 +84,14 @@ export default function CreatePost({ session, onPostCreated }) {
         const compressedImage = await compressImage(imageFile)
         
         const fileExt = imageFile.name.split('.').pop()
-        const fileName = `${Math.random()}.${fileExt}`
+        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
         const filePath = `${fileName}`
 
         const { error: uploadError } = await supabase.storage
           .from('post-images')
-          .upload(filePath, compressedImage)
+          .upload(filePath, compressedImage, {
+            contentType: 'image/jpeg'
+          })
 
         if (uploadError) throw uploadError
 
@@ -103,12 +119,11 @@ export default function CreatePost({ session, onPostCreated }) {
       // Reset form
       setCaption('')
       setImageFile(null)
-      e.target.reset()
+      setPreview(null)
       
       // Refresh posts
       onPostCreated()
       
-      alert('Post created successfully!')
     } catch (error) {
       alert('Error creating post: ' + error.message)
     } finally {
@@ -128,16 +143,34 @@ export default function CreatePost({ session, onPostCreated }) {
           rows={3}
         />
         
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageChange}
-          style={styles.fileInput}
-        />
+        {preview && (
+          <div style={styles.previewContainer}>
+            <img src={preview} alt="Preview" style={styles.preview} />
+            <button 
+              type="button"
+              onClick={removeImage}
+              style={styles.removeButton}
+            >
+              ✕ Remove
+            </button>
+          </div>
+        )}
+        
+        {!preview && (
+          <label style={styles.fileLabel}>
+            📷 Add Photo (Optional)
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              style={styles.fileInput}
+            />
+          </label>
+        )}
         
         <button 
           type="submit" 
-          disabled={uploading}
+          disabled={uploading || (!caption.trim() && !imageFile)}
           style={styles.button}
         >
           {uploading ? 'Posting...' : 'Post'}
@@ -172,10 +205,37 @@ const styles = {
     fontFamily: 'inherit',
     resize: 'vertical',
   },
-  fileInput: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
+  previewContainer: {
+    position: 'relative',
+  },
+  preview: {
+    width: '100%',
+    borderRadius: '8px',
+    maxHeight: '400px',
+    objectFit: 'cover',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: '0.5rem',
+    right: '0.5rem',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    color: 'white',
+    border: 'none',
     borderRadius: '6px',
+    padding: '0.5rem 1rem',
+    cursor: 'pointer',
+  },
+  fileLabel: {
+    display: 'inline-block',
+    padding: '0.75rem',
+    border: '2px dashed #d1d5db',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    textAlign: 'center',
+    color: '#6b7280',
+  },
+  fileInput: {
+    display: 'none',
   },
   button: {
     backgroundColor: '#3b82f6',
@@ -186,5 +246,6 @@ const styles = {
     fontSize: '1rem',
     cursor: 'pointer',
     fontWeight: '500',
+    opacity: 1,
   },
 }
