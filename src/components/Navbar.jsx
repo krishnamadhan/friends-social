@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
-import Settings from './Settings'    
+import Settings from './Settings'
 
 export default function Navbar({ session, profile, onProfileUpdate }) {
   const [showSettings, setShowSettings] = useState(false)
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
   }
 
   return (
-    <nav style={styles.nav}>
-      <div style={styles.container}>
-        <h1 style={styles.logo}>Banter Squad</h1>
-        <div style={styles.userSection}>
+    <>
+      <nav style={styles.nav}>
+        <div style={styles.container}>
+          <h1 style={styles.logo}>Banter Squad</h1>
+          <div style={styles.userSection}>
             <button 
               onClick={() => setShowSettings(true)}
               style={styles.nicknameButton}
@@ -22,9 +24,18 @@ export default function Navbar({ session, profile, onProfileUpdate }) {
             <button onClick={handleLogout} style={styles.logoutButton}>
               Logout
             </button>
-          </div> 
-      </div>
-    </nav>
+          </div>
+        </div>
+      </nav>
+      
+      {showSettings && (
+        <Settings 
+          profile={profile}
+          onUpdate={onProfileUpdate}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </>
   )
 }
 
