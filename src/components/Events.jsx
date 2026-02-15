@@ -11,25 +11,48 @@ export default function Events({ session }) {
 
   const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch events directly
+      const { data: eventsData, error: eventsError } = await supabase
         .from('events')
-        .select(`
-          *,
-          profiles:user_id (nickname),
-          event_comments (
-            id,
-            text,
-            user_id,
-            created_at,
-            profiles:user_id (nickname)
-          )
-        `)
+        .select('*')
         .order('event_date', { ascending: true })
 
-      if (error) throw error
-      setEvents(data || [])
+      if (eventsError) throw eventsError
+
+      // Fetch all profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+
+      if (profilesError) throw profilesError
+
+      // Build a profile map
+      const profileMap = {}
+      profilesData?.forEach(profile => {
+        profileMap[profile.id] = profile
+      })
+
+      // Fetch all event comments
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('event_comments')
+        .select('*')
+
+      if (commentsError) throw commentsError
+
+      // Enrich events with related data
+      const enrichedEvents = eventsData?.map(event => ({
+        ...event,
+        profiles: profileMap[event.user_id],
+        event_comments: commentsData?.filter(c => c.event_id === event.id).map(c => ({
+          ...c,
+          profiles: profileMap[c.user_id]
+        })) || []
+      })) || []
+
+      setEvents(enrichedEvents)
     } catch (error) {
       console.error('Error fetching events:', error)
+      alert(`Failed to load events: ${error.message}`)
     } finally {
       setLoading(false)
     }

@@ -9,27 +9,56 @@ export default function Feed({ session }) {
 
   const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch posts directly without relationship join
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          *,
-          profiles:user_id (nickname),
-          comments (
-            id, 
-            text, 
-            user_id, 
-            created_at,
-            parent_comment_id,
-            profiles:user_id (nickname)
-          ),
-          likes (id, user_id)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setPosts(data || [])
+      if (postsError) throw postsError
+
+      // Fetch all profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+
+      if (profilesError) throw profilesError
+
+      // Build a profile map
+      const profileMap = {}
+      profilesData?.forEach(profile => {
+        profileMap[profile.id] = profile
+      })
+
+      // Fetch all comments with their profiles
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('comments')
+        .select('*')
+
+      if (commentsError) throw commentsError
+
+      // Fetch all likes
+      const { data: likesData, error: likesError } = await supabase
+        .from('likes')
+        .select('*')
+
+      if (likesError) throw likesError
+
+      // Enrich posts with related data
+      const enrichedPosts = postsData?.map(post => ({
+        ...post,
+        profiles: profileMap[post.user_id],
+        comments: commentsData?.filter(c => c.post_id === post.id).map(c => ({
+          ...c,
+          profiles: profileMap[c.user_id]
+        })) || [],
+        likes: likesData?.filter(l => l.post_id === post.id) || []
+      })) || []
+
+      setPosts(enrichedPosts)
     } catch (error) {
       console.error('Error fetching posts:', error)
+      alert(`Failed to load posts: ${error.message}`)
     } finally {
       setLoading(false)
     }
